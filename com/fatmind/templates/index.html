@@ -1,6 +1,19 @@
-$def with (state)
+$def with (crawler_list)
 
-$if state == 0:
-	crawler is not start. <a href="/start">start</a> 
+<!-- define new variable -->
+$ size = len(crawler_list)
+$ count = 1
+$if size > 0:
+    <p>running crawler list : </p>
+    $for k, v in crawler_list.iteritems():
+            $(count) : $(k) : $(v)  <br>
+            $ count = count + 1
 $else:
-	crawler is starting.
+    this is not crawler running.
+
+<hr>    
+<div>
+	<p> add new crawler, please click : <a href="/add"> add </a> </p>
+</div>
+	
+
