@@ -22,50 +22,58 @@ class QunarCrawler(Thread):
     '''
     
     log = logger_factory.LoggerFatory().getLogger("QunarCrawler")
+    
+    #hold all crawler run state
+    crawler_list = {}
+    crawler_list["Test"] = 0
+    
+    #send mail
+    mail_sender = mail_sender.MailSender()
 
     _url = "http://ws.qunar.com/holidayService.jcp?lane="
+    interval_time = 5
     from_ = None
     to_ = None 
-    expect_date = None
-    expect_discount = None
-    interval_time = 5
+    date = None
+    discount = None
     mail_revicer = None
-    
-    mail_sender = mail_sender.MailSender()
-    
-    state = 0
 
-    def __init__(self, from_, to_, expect_date, expect_discount, mail_revicer):
+
+    def __str__(self):
+        return self.from_ + "-" + self.to_ + ", " + self.date + ", " + self.discount + ", " + self.mail_revicer
+    
+
+    def __init__(self, from_, to_, date, discount, mail_revicer):
         super(QunarCrawler, self).__init__()
         self.from_ = from_
         self.to_ = to_
-        self.expect_date = expect_date
-        self.expect_discount = expect_discount
+        self.date = date
+        self.discount = discount
         self.mail_revicer = mail_revicer
-        
+    
+           
     def run(self):
-        res_file = open("qunar_res.txt", "w")
+        QunarCrawler.crawler_list[self] = 0
         try :
             while True :
                 sub = self.from_ + "-" + self.to_
                 req_res = urllib2.urlopen(urllib2.Request(self._url + sub))
-                print req_res.code, req_res.msg
+                QunarCrawler.log.info(self.__str__() + " - " + str(req_res.code) + " - " + req_res.msg)
                 root = xmlTree.parse(req_res).getroot()
                 lines = root.find("airline") 
                 for e in lines :
-                    if e.attrib["date"] == self.expect_date :
+                    if e.attrib["date"] == self.date :
                         for c in e :
-                            if c.attrib["type"] == "go" and float(c.attrib["discount"][:-1]) < 8:
+                            if c.attrib["type"] == "go" and float(c.attrib["discount"][:-1]) < float(self.discount):
                                 msg = c.attrib["price"] + " ~ "  + c.attrib["discount"]
-                                print msg
+                                QunarCrawler.log.info(self.__str__() + " : " + msg)
                                 self.mail_sender.send_mail(self.mail_revicer, sub, msg)
+                                QunarCrawler.crawler_list[self] = 1
                                 return
                 time.sleep(self.interval_time)
         except Exception, e:
             self.log.error(e)
             print traceback.format_exc()
-        finally:
-            res_file.close()
                         
 
 if __name__ == "__main__" :
